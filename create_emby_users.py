@@ -161,6 +161,11 @@ def create_user(server_url, api_key, username, email, password, profile_image_ur
             # Add a delay after user creation before setting policies
             time.sleep(1)
             
+            # Ensure password is set correctly using enhanced method
+            set_password_success = set_user_password(server_url, api_key, user_id, password)
+            if not set_password_success:
+                logger.warning(f"Enhanced password setting failed for user {username}, but user was created")
+            
             # Step 2: Set user policy including roles
             if default_roles:
                 policy_success = set_user_policy(server_url, api_key, user_id, default_roles)
@@ -191,6 +196,116 @@ def create_user(server_url, api_key, username, email, password, profile_image_ur
         error_msg = f"Exception creating user {username}: {str(e)}"
         logger.error(error_msg)
         return False, error_msg
+
+def set_user_password(server_url, api_key, user_id, new_password):
+    """
+    Set a user's password on the Emby server using multiple methods to ensure it works
+    
+    Args:
+        server_url (str): URL of the Emby server
+        api_key (str): Admin API key for Emby
+        user_id (str): ID of the user to update
+        new_password (str): New password for the user
+        
+    Returns:
+        bool: Success or failure
+    """
+    # First try with the standard password reset endpoint
+    reset_url = f"{server_url}/emby/Users/{user_id}/Password"
+    headers = {
+        "X-Emby-Token": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    # Data for password reset
+    data = {
+        "Id": user_id,
+        "NewPw": new_password,
+        "ResetPassword": True
+    }
+    
+    try:
+        logger.info(f"Setting password for user ID: {user_id}")
+        response = requests.post(reset_url, headers=headers, json=data)
+        
+        if response.status_code == 200 or response.status_code == 204:
+            logger.info(f"Standard API call succeeded, trying alternative method to ensure password sets correctly")
+            # Continue with alternative method even if successful
+        else:
+            logger.warning(f"Standard password reset failed. Status: {response.status_code}")
+            logger.info("Trying alternative method...")
+    except Exception as e:
+        logger.warning(f"Exception with standard password reset: {str(e)}")
+        logger.info("Trying alternative method...")
+    
+    # Alternative method: Try to update user with password using different approach
+    try:
+        # Try direct admin password update with alternate API endpoint format
+        direct_url = f"{server_url}/emby/Users/{user_id}/Password"
+        direct_headers = {
+            "X-Emby-Token": api_key,
+            "Content-Type": "application/json"
+        }
+        direct_data = {
+            "CurrentPw": "",  # Empty for admin reset
+            "NewPw": new_password
+        }
+        
+        direct_response = requests.post(direct_url, headers=direct_headers, json=direct_data)
+        
+        if direct_response.status_code == 200 or direct_response.status_code == 204:
+            logger.info(f"Successfully set password using alternative direct method for user ID: {user_id}")
+            return True
+            
+        logger.warning(f"Alternative direct method failed. Status: {direct_response.status_code}")
+        
+        # Try another endpoint as backup
+        backup_url = f"{server_url}/emby/Users/{user_id}/Policy"
+        get_headers = {
+            "X-Emby-Token": api_key
+        }
+        
+        # Get current policy first
+        policy_response = requests.get(backup_url, headers=get_headers)
+        if policy_response.status_code == 200:
+            try:
+                policy = policy_response.json()
+                
+                # Update password field in policy
+                backup_data = {
+                    "Password": new_password,
+                    **policy  # Keep all other policy settings
+                }
+                
+                backup_response = requests.post(backup_url, headers=direct_headers, json=backup_data)
+                
+                if backup_response.status_code == 200 or backup_response.status_code == 204:
+                    logger.info(f"Successfully set password using policy update for user ID: {user_id}")
+                    return True
+                else:
+                    logger.warning(f"Policy update method failed. Status: {backup_response.status_code}")
+            except Exception as e:
+                logger.warning(f"Error in policy update: {str(e)}")
+        
+        # Last resort: try updating the user directly
+        final_url = f"{server_url}/emby/Users/{user_id}"
+        final_data = {
+            "Id": user_id,
+            "Password": new_password
+        }
+        
+        final_response = requests.post(final_url, headers=direct_headers, json=final_data)
+        
+        if final_response.status_code == 200 or final_response.status_code == 204:
+            logger.info(f"Successfully set password using direct user update for user ID: {user_id}")
+            return True
+        else:
+            logger.error(f"All password setting methods failed. Status: {final_response.status_code}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Exception in alternative password setting methods: {str(e)}")
+        return False
 
 def get_user_id_by_name(server_url, api_key, username):
     """

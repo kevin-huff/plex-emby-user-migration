@@ -266,3 +266,88 @@ python generate_welcome_emails.py --input users.csv --server-url "http://your-em
 - `--template`: Path to a custom email template file
 - `--create-template`: Create a template file at the specified path and exit
 - `--preview`: Preview the first welcome email without generating the CSV
+
+## Step 5: Send Welcome Emails with Google Sheets and Apps Script
+
+After generating the welcome emails CSV, you can use Google Sheets and Apps Script to easily send the emails to your users:
+
+1. **Import the CSV to Google Sheets**:
+   - Open Google Sheets and create a new spreadsheet
+   - Go to File > Import > Upload > Select the `welcome_emails.csv` file
+   - Choose "Replace current sheet" and click Import
+
+2. **Set up the Apps Script**:
+   - In your Google Sheet, go to Extensions > Apps Script
+   - Copy and paste the following code into the script editor:
+
+```javascript
+function sendEmbyInvitations() {
+  // Get the active sheet
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  // Get all data from the sheet
+  var data = sheet.getDataRange().getValues();
+  
+  // Get the headers (first row)
+  var headers = data[0];
+  // Find column indexes
+  var emailColIndex = headers.indexOf("Email");
+  var subjectColIndex = headers.indexOf("Subject");
+  var messageColIndex = headers.indexOf("Message");
+  
+  // Loop through rows (skip header row)
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var emailAddress = row[emailColIndex];
+    var subject = row[subjectColIndex];
+    var message = row[messageColIndex];
+    
+    // Only send if we have an email address
+    if (emailAddress) {
+      try {
+        // Send the email
+        GmailApp.sendEmail(emailAddress, subject, message, {
+          htmlBody: message.replace(/\n/g, '<br>'),
+          name: "Your Name Here"  // Customize with your name/server name
+        });
+        
+        // Optional: Mark as sent in the sheet
+        sheet.getRange(i + 1, headers.length + 1).setValue("Sent: " + new Date());
+        
+        // Add a small delay to avoid hitting quotas
+        Utilities.sleep(1000);
+      } catch (error) {
+        // Log errors
+        sheet.getRange(i + 1, headers.length + 1).setValue("Error: " + error.toString());
+      }
+    }
+  }
+}
+```
+
+3. **Customize the Script**:
+   - Change `"Your Name Here"` to your name or your server's name (e.g., "Media Server Admin" or "Your Emby Server")
+   - Adjust the delay if needed (currently set to 1 second between emails)
+
+4. **Run the Script**:
+   - Save the script (Ctrl+S or ⌘+S)
+   - Click the Run button (▶) or select Run > Run function > sendEmbyInvitations
+   - The first time you run it, you'll need to authorize the script to access your Gmail and Google Sheets
+
+5. **Monitor Progress**:
+   - The script will add a column to your sheet showing when each email was sent
+   - Any errors will be logged in this column
+   - You can watch the progress in real-time as the script runs
+
+### Tips for Mass Email Sending
+
+- **Gmail Quotas**: Free Gmail accounts have a limit of 500 emails per day. If you have many users, you might need to split the sending over multiple days.
+- **Testing**: Before sending to all users, create a test sheet with just your email to verify the format.
+- **Avoid Spam Filters**: Personalize the subject and avoid spam-triggering words.
+- **Scheduling**: You can set up a time-based trigger in Apps Script to automatically send emails at a specific time.
+
+### Troubleshooting
+
+- **Authorization Error**: Make sure to grant the necessary permissions when prompted.
+- **Runtime Error**: Check that your column headers match exactly ("Email", "Subject", "Message").
+- **Email Not Received**: Check your spam folder and verify the email address is correct.
+- **Quota Exceeded**: If you hit Gmail's sending limits, wait 24 hours before trying again.
