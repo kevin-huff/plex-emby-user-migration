@@ -18,7 +18,7 @@ This repository contains scripts to help you migrate user accounts from Plex to 
 
 1. Clone this repository or download the scripts:
 ```bash
-git clone https://github.com/your-username/plex-to-emby-migration.git
+git clone git@github.com:kevin-huff/plex-emby-user-migration.git
 cd plex-to-emby-migration
 ```
 
@@ -65,28 +65,51 @@ If you have Tautulli installed:
 
 The `plex_to_csv.py` script will convert your Plex user XML file to a CSV file with generated passphrases.
 
+### Preview Users in XML
+
+First, you might want to preview the users in your XML file:
+
 ```bash
-python plex_to_csv.py
+python plex_to_csv.py --preview plex_users.xml
 ```
 
-By default, the script looks for a file named `plex_users.xml` and outputs to `users.csv`.
+### Convert XML to CSV
 
-You can modify the file paths at the bottom of the script if needed:
-
-```python
-# Specify the path to your XML file
-xml_file = 'your_custom_name.xml'  # Replace with your XML file path
-# Specify the path for the output CSV file
-csv_file = 'your_custom_output.csv'  # Desired CSV output file
+```bash
+python plex_to_csv.py --xml plex_users.xml --csv users.csv
 ```
 
-The generated CSV will contain the following columns:
-- ID: The Plex user ID
-- Username: The Plex username
-- Email: The user's email address
-- Thumb: URL to the user's profile picture
-- Roles: User roles from Plex
-- Passphrase: A randomly generated passphrase for the new Emby account
+### Customize Passphrases
+
+You can create and use a custom word list for more memorable passphrases:
+
+```bash
+# Create a sample word list file
+python plex_to_csv.py --create-word-list my_words.txt
+
+# Edit the word list file, then use it
+python plex_to_csv.py --xml plex_users.xml --word-list my_words.txt
+```
+
+### Test Passphrase Generation
+
+You can test the passphrase generation without processing users:
+
+```bash
+python plex_to_csv.py --test-passphrases
+```
+
+### Script Options
+
+- `--xml`: Path to the Plex users XML file
+- `--csv`: Path for output CSV file (default: users.csv)
+- `--word-list`: Path to custom word list file for passphrases
+- `--create-word-list`: Create a sample word list file at specified path and exit
+- `--dry-run`: Show what would be done without writing to file
+- `--preview`: Preview users in the XML file without generating CSV
+- `--preview-count`: Number of users to preview (default: 5)
+- `--test-passphrases`: Generate and display sample passphrases
+- `--passphrase-count`: Number of sample passphrases to generate (default: 10)
 
 ## Step 3: Create Users in Emby
 
