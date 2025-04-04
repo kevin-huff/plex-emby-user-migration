@@ -153,10 +153,13 @@ If you don't specify the `--libraries` option, the script will interactively pro
 - `--dry-run`: Run without actually creating users (useful for testing)
 - `--delay`: Set the delay between API calls in seconds (default: 1)
 - `--list-libraries`: List available libraries and exit
+- `--skip-libraries`: Skip setting library access (useful if your Emby version has issues with it)
+- `--skip-images`: Skip profile image uploads (useful if your Emby version has issues with images)
+- `--test-connection`: Test connection to Emby server and show version information
 
-Example with all options:
+Example with options for problematic Emby servers:
 ```bash
-python create_emby_users.py users.csv --server "http://your-emby-server:8096" --api-key "your-api-key" --libraries "all" --roles "EnablePlayback,EnableVideoPlayback" --dry-run --delay 2
+python create_emby_users.py users.csv --server "http://your-emby-server:8096" --api-key "your-api-key" --skip-libraries --skip-images --delay 5
 ```
 
 ## Passphrase Generation
@@ -183,8 +186,11 @@ You can modify the word list in the `generate_passphrase()` function to use your
 - **API Key Error**: Ensure your API key has the necessary permissions.
 - **Connection Error**: Check that your Emby server URL is correct and accessible.
 - **Rate Limiting**: If you encounter rate limiting, increase the `--delay` parameter.
-- **Image Download Failures**: If the original Plex avatar URLs don't work, the script will automatically use a random avatar from DiceBear API as a fallback.
-- **Library Access Issues**: If you have trouble with library access, try using the `--list-libraries` option to verify library IDs.
+- **Image Upload Issues**: 
+  - In Emby 4.8.11.0, profile image uploads may fail due to API compatibility issues
+  - The script will automatically skip image uploads for this version
+  - For other versions, if you have trouble with image uploads, use the `--skip-images` option
+- **Library Access Issues**: If you have trouble with library access, try using the `--list-libraries` option to verify library IDs or use `--skip-libraries` to bypass this step.
 
 ## Features
 
